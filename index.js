@@ -47,13 +47,9 @@ async function handleEvent(event) {
     if (event.type === 'message' && event.message.type === 'text') {
       const userMessage = event.message.text.slice(0, 500);
 
-      const response = await hf.conversational({
-        model: 'facebook/blenderbot-400M-distill',
-        inputs: {
-          past_user_inputs: [],
-          generated_responses: [],
-          text: userMessage
-        }
+      const response = await hf.text_generation({
+        model: 'IDEA-CCNL/Wenzhong2.0-GPT2-3.5B-chinese',
+        inputs: userMessage
       });
 
       return client.replyMessage(event.replyToken, {
