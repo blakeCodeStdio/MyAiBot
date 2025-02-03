@@ -9,7 +9,8 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(bodyParser.json());
+// 使用原始請求 body 來進行簽名驗證
+app.use(bodyParser.raw({ type: 'application/json' }));
 
 // 環境變數檢查
 if (!process.env.LINE_ACCESS_TOKEN || 
@@ -61,7 +62,7 @@ async function handleEvent(event) {
     console.error('處理事件時發生錯誤:', error);
     return client.replyMessage(event.replyToken, {
       type: 'text',
-      text: '抱歉，處理訊息時發生錯誤。',
+      text: '抱歉，處理訊息時發生錯誤。'
     });
   }
 }
