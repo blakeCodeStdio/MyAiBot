@@ -31,7 +31,7 @@ async function handleEvent(event) {
   if (event.type === 'message' && event.message.type === 'text') {
     // 將用戶訊息發送給 OpenAI 生成回應
     const response = await openai.chat.completions.create({
-      model: 'GPT-4o mini',  // 選擇你希望使用的模型
+      model: 'gpt-3.5-turbo',  // 選擇你希望使用的模型
       messages: [{ role: 'user', content: event.message.text }],
     });
 
