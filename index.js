@@ -2,10 +2,18 @@ const line = require('@line/bot-sdk');
 const express = require('express');
 const dotenv = require('dotenv');
 const { OpenAI } = require('openai');  // 引入 OpenAI 客戶端
-dotenv.config();
-
 const app = express();
 const port = process.env.PORT || 3000;
+
+dotenv.config();
+
+// 環境變數檢查
+if (!process.env.LINE_ACCESS_TOKEN || 
+    !process.env.LINE_CHANNEL_SECRET || 
+    !process.env.OPENAI_API_KEY) {
+  console.error('缺少必要的環境變數');
+  process.exit(1);
+}
 
 // LINE Bot 設定
 const config = {
@@ -28,21 +36,30 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
 
 // 處理訊息事件
 async function handleEvent(event) {
-  if (event.type === 'message' && event.message.type === 'text') {
-    // 將用戶訊息發送給 OpenAI 生成回應
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',  // 選擇你希望使用的模型
-      messages: [{ role: 'user', content: event.message.text }],
-    });
+    try {
+      if (event.type === 'message' && event.message.type === 'text') {
+        // 限制輸入長度，防止過長訊息
+        const userMessage = event.message.text.slice(0, 500);
 
-    const replyMessage = response.choices[0].message.content;
-
-    // 回應用戶訊息
-    return client.replyMessage(event.replyToken, {
-      type: 'text',
-      text: replyMessage,
-    });
-  }
+        const response = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: userMessage }],
+        });
+  
+        const replyMessage = response.choices[0].message.content;
+  
+        return client.replyMessage(event.replyToken, {
+          type: 'text',
+          text: replyMessage,
+        });
+      }
+    } catch (error) {
+      console.error('處理事件時發生錯誤:', error);
+      return client.replyMessage(event.replyToken, {
+        type: 'text',
+        text: '抱歉，處理訊息時發生錯誤。',
+      });
+    }
 }
 
 // 啟動伺服器
