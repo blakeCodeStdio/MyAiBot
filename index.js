@@ -39,9 +39,9 @@ async function handleEvent(event) {
         // 限制輸入長度
         const userMessage = event.message.text.slice(0, 500);
 
-        const response = await hf.conversational({
+        const response = await hf.textGeneration({
           model: 'facebook/blenderbot-400M-distill',
-          inputs: { text: userMessage }
+          inputs: userMessage
         });
   
         return client.replyMessage(event.replyToken, {
