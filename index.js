@@ -1,73 +1,49 @@
-const line = require('@line/bot-sdk');
+require('dotenv').config();
 const express = require('express');
-const dotenv = require('dotenv');
-const bodyParser = require('body-parser');
-const { HfInference } = require('@huggingface/inference');
-
-dotenv.config();
+const axios = require('axios');
+const linebot = require('linebot');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-// 使用原始請求 body 來進行簽名驗證
-app.use(bodyParser.raw({ type: 'application/json' }));
+// 初始化 LINE Bot
+const bot = linebot({
+  channelId: process.env.LINE_CHANNEL_ID,
+  channelSecret: process.env.LINE_CHANNEL_SECRET,
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+});
 
-// 環境變數檢查
-if (!process.env.LINE_ACCESS_TOKEN || 
-    !process.env.LINE_CHANNEL_SECRET || 
-    !process.env.HF_TOKEN) {
-  console.error('缺少必要的環境變數');
-  process.exit(1);
-}
+// 設定 LINE Webhook
+app.post('/webhook', bot.parser());
 
-// LINE Bot 設定
-const config = {
-  channelAccessToken: process.env.LINE_ACCESS_TOKEN,
-  channelSecret: process.env.LINE_CHANNEL_SECRET
-};
-const client = new line.Client(config);
-
-// Hugging Face 設定
-const hf = new HfInference(process.env.HF_TOKEN);
-
-// Webhook 端點
-app.post('/webhook', line.middleware(config), async (req, res) => {
+bot.on('message', async (event) => {
   try {
-    const promises = req.body.events.map(handleEvent);
-    const result = await Promise.all(promises);
-    res.json(result);
+    const userMessage = event.message.text;
+
+    // 發送請求到 Groq API
+    const response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: 'mixtral-8x7b-32768',
+        messages: [{ role: 'user', content: userMessage }],
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const botReply = response.data.choices[0].message.content;
+    event.reply(botReply);
   } catch (error) {
-    console.error('Webhook 發生錯誤:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Groq API 發生錯誤：', error);
+    event.reply('發生錯誤，請稍後再試！');
   }
 });
 
-// 處理訊息事件
-async function handleEvent(event) {
-  try {
-    if (event.type === 'message' && event.message.type === 'text') {
-      const userMessage = event.message.text.slice(0, 500);
-
-      const response = await hf.text_generation({
-        model: 'IDEA-CCNL/Wenzhong2.0-GPT2-3.5B-chinese',
-        inputs: userMessage
-      });
-
-      return client.replyMessage(event.replyToken, {
-        type: 'text',
-        text: response.generated_text || '無法產生回覆',
-      });
-    }
-  } catch (error) {
-    console.error('處理事件時發生錯誤:', error);
-    return client.replyMessage(event.replyToken, {
-      type: 'text',
-      text: '抱歉，處理訊息時發生錯誤。'
-    });
-  }
-}
-
 // 啟動伺服器
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`伺服器運行中，網址：http://localhost:${PORT}`);
 });
