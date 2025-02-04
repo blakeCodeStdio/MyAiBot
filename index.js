@@ -24,7 +24,7 @@ bot.on('message', async (event) => {
     const response = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
       {
-        model: 'mixtral-8x7b-32768',
+        model: 'llama3-70b-8192',
         messages: [{ role: 'user', content: userMessage }],
       },
       {
